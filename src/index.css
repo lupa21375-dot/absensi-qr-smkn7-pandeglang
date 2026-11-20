@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --navy: #172B4D;
+    --navy-dark: #0D1B36;
+    --blue: #315E9E;
+    --blue-light: #4A82D1;
+    --blue-soft: #DCE6F5;
+    --mu: #5F7190;
+    --ln: rgba(23, 43, 77, 0.12);
+    --gl: rgba(255, 255, 255, 0.72);
+    --gb: rgba(255, 255, 255, 0.95);
+    --ok: #16845B;
+    --late: #B7791F;
+    --al: #C44242;
+    --iz: #2875B9;
+    --bg: #EBF1FA;
+    --tx: #14233F;
+    --sh: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 20px 38px -18px rgba(23, 43, 77, 0.28), 0 3px 8px rgba(23, 43, 77, 0.06);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0B1424;
+    --tx: #E6EDF8;
+    --mu: #93A4BF;
+    --ln: rgba(255, 255, 255, 0.12);
+    --gl: rgba(20, 32, 54, 0.75);
+    --gb: rgba(255, 255, 255, 0.12);
+    --sh: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 20px 40px -20px rgba(0, 0, 0, 0.7);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--tx);
+    background-color: var(--bg);
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: 
+      radial-gradient(750px 500px at 5% -5%, rgba(49, 94, 158, 0.28), transparent 65%),
+      radial-gradient(650px 450px at 98% 25%, rgba(120, 170, 230, 0.3), transparent 60%),
+      radial-gradient(550px 450px at 45% 105%, rgba(23, 43, 77, 0.18), transparent 60%);
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Glassmorphism System */
+.glass {
+  background: var(--gl);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  border: 1px solid var(--gb);
+  box-shadow: var(--sh);
+}
+
+.card {
+  background: var(--gl);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  border: 1px solid var(--gb);
+  box-shadow: var(--sh);
+  border-radius: 24px;
+}
+
+/* Button & Controls */
+.btn-primary {
+  background: linear-gradient(180deg, #3C6DB1, #172B4D);
+  color: #FFFFFF;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 10px 18px -8px rgba(23, 43, 77, 0.65);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 14px 24px -8px rgba(23, 43, 77, 0.75);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background: var(--gl);
+  color: var(--tx);
+  border: 1px solid var(--ln);
+  box-shadow: none;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(49, 94, 158, 0.12);
+  border-color: rgba(49, 94, 158, 0.28);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #D65A5A, #A83535);
+  color: #FFFFFF;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 16px -6px rgba(168, 53, 53, 0.6);
+}
+
+/* Inputs */
+.input-field {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ln);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--tx);
+  outline: none;
+  box-shadow: 0 2px 4px rgba(23, 43, 77, 0.05) inset;
+  transition: all 0.2s;
+}
+
+[data-theme="dark"] .input-field {
+  background: rgba(14, 23, 42, 0.65);
+}
+
+.input-field:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(49, 94, 158, 0.2);
+}
+
+/* Status Badges */
+.badge-ok {
+  background: #D9F2E6;
+  color: var(--ok);
+}
+
+.badge-late {
+  background: #FCEFD2;
+  color: var(--late);
+}
+
+.badge-al {
+  background: #F8DEDE;
+  color: var(--al);
+}
+
+.badge-iz {
+  background: #DCEBF7;
+  color: var(--iz);
+}
+
+.badge-pl {
+  background: #DCE6F5;
+  color: var(--blue);
+}
+
+.badge-gr {
+  background: #E6EAF1;
+  color: var(--mu);
+}
+
+/* QR Card Print Layout */
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  body::before, .no-print {
+    display: none !important;
+  }
+}
