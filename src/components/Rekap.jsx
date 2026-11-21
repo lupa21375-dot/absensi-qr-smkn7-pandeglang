@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import {
   FileSpreadsheet,
   Download,
@@ -138,14 +138,20 @@ export default function Rekap({ user, addToast }) {
       x.izinKeterangan || '-'
     ]);
 
-    doc.autoTable({
+    const tableOptions = {
       head: headers,
       body: rows,
       startY: 24,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [23, 43, 77], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245, 248, 253] }
-    });
+    };
+
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable(tableOptions);
+    } else if (typeof autoTable === 'function') {
+      autoTable(doc, tableOptions);
+    }
 
     const fileName = `Rekap_Absensi_SMKN7_${(rekapData.dari || 'tgl').replace(/\//g, '-')}.pdf`;
     doc.save(fileName);

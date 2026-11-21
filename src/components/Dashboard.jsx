@@ -13,7 +13,11 @@ import {
   ChevronRight,
   TrendingUp,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Flag,
+  HeartHandshake,
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { apiCall, getDeviceTime } from '../utils/api';
 
@@ -35,6 +39,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
 
   const bentoRef = useRef(null);
   const hadirCountRef = useRef(null);
+  const circleRef = useRef(null);
 
   const loadDashboard = async () => {
     try {
@@ -51,7 +56,6 @@ export default function Dashboard({ user, onNavigate, addToast }) {
       }
     } catch (err) {
       console.warn('Dashboard fetch notice:', err);
-      // Clean fallback using real device date & empty stats (no dummy data)
       const devTime = getDeviceTime();
       setData((prev) => ({
         ...prev,
@@ -79,14 +83,43 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   const totalSiswa = data.totalSiswa || 1083;
   const percentage = totalSiswa ? Math.round((totalMasuk / totalSiswa) * 100) : 0;
 
+  // Day detection for Upacara (Senin) & Jumtak (Jumat)
+  const hariLower = String(data.hari || '').toLowerCase();
+  const dow = new Date().getDay();
+  const isSenin = hariLower.includes('senin') || dow === 1;
+  const isJumat = hariLower.includes('jumat') || dow === 5;
+
+  // Title and context for ceremonial / morning activity
+  let eventTitle = 'Ketepatan Waktu Siswa';
+  let eventSubtitle = 'Persentase kehadiran siswa tepat waktu sebelum batas toleransi 07.18 WIB.';
+  let EventIcon = Award;
+
+  if (isSenin) {
+    eventTitle = 'Partisipasi Upacara Bendera';
+    eventSubtitle = 'Siswa yang hadir tepat waktu (sebelum 07.18 WIB) dihitung mengikuti upacara.';
+    EventIcon = Flag;
+  } else if (isJumat) {
+    eventTitle = "Partisipasi Jum'at Taqwa (Jumtak)";
+    eventSubtitle = 'Siswa yang hadir tepat waktu (sebelum 07.18 WIB) dihitung mengikuti Jumtak.';
+    EventIcon = HeartHandshake;
+  }
+
+  // Participation logic:
+  // Only students who arrived on time (hadir before 07.18 WIB) count as participating
+  const siswaIkut = data.hadir || 0;
+  const persenIkut = totalSiswa ? Math.round((siswaIkut / totalSiswa) * 100) : 0;
+  const siswaTidakIkut = Math.max(0, totalSiswa - siswaIkut);
+  const persenTidakIkut = 100 - persenIkut;
+
+  // Circular progress math (radius 48 -> circumference ~301.59)
+  const radius = 48;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (persenIkut / 100) * circumference;
+
   // Determine if morning gate has passed 13:00 WIB
   const devTime = getDeviceTime();
   const isAfterMasukCutoff = devTime.menit >= 13 * 60; // 13:00 WIB
-
-  // Students who have not scanned yet
   const belumScan = Math.max(0, totalSiswa - totalMasuk - (data.izin || 0));
-
-  // Alfa is ONLY displayed after gate masuk closes (13:00 WIB) on active days
   const tampilkanAlfa = isAfterMasukCutoff && data.kondisi === 'AKTIF';
   const angkaAlfa = tampilkanAlfa ? (data.alfa || belumScan) : 0;
 
@@ -102,7 +135,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
+      {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#172B4D] tracking-tight">
@@ -144,6 +177,111 @@ export default function Dashboard({ user, onNavigate, addToast }) {
           </div>
         </div>
       )}
+
+      {/* FEATURED: Circular Progress Chart (Upacara / Jumtak / Kedisiplinan) */}
+      <div className="card p-5 sm:p-6 tilt-card border border-white/80 shadow-xl relative overflow-hidden bg-gradient-to-br from-white/90 via-white/80 to-blue-50/50">
+        <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-slate-200/60">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#3C6DB1] to-[#172B4D] text-white flex items-center justify-center shrink-0 shadow-md">
+            <EventIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#172B4D]">
+              {eventTitle}
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              {eventSubtitle}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Circular Donut Diagram */}
+          <div className="flex flex-col items-center justify-center shrink-0">
+            <div className="relative w-36 h-36 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                {/* Background Ring */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r={radius}
+                  stroke="#E2E8F0"
+                  strokeWidth="11"
+                  fill="none"
+                />
+                {/* Dynamic Progress Ring */}
+                <circle
+                  ref={circleRef}
+                  cx="60"
+                  cy="60"
+                  r={radius}
+                  stroke={persenIkut >= 75 ? '#16845B' : persenIkut >= 50 ? '#315E9E' : '#B7791F'}
+                  strokeWidth="11"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="none"
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+
+              {/* Center Stat Counter */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span className="font-heading font-extrabold text-3xl text-[#172B4D] tabular-nums tracking-tight">
+                  {persenIkut}%
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Mengikuti
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Statistics Breakdown */}
+          <div className="flex-1 w-full space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Box 1: Mengikuti */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/70">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-900">Mengikuti</span>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-800">
+                    {persenIkut}%
+                  </span>
+                </div>
+                <div className="font-heading font-extrabold text-2xl text-emerald-800 mt-1 tabular-nums">
+                  {siswaIkut} <span className="text-xs font-medium text-emerald-700">/ {totalSiswa} Siswa</span>
+                </div>
+                <span className="text-[11px] text-emerald-700 mt-1 block">
+                  Scan masuk sebelum 07.18 WIB
+                </span>
+              </div>
+
+              {/* Box 2: Tidak Mengikuti */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/70">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900">Tidak Mengikuti</span>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-amber-200 text-amber-800">
+                    {persenTidakIkut}%
+                  </span>
+                </div>
+                <div className="font-heading font-extrabold text-2xl text-amber-800 mt-1 tabular-nums">
+                  {siswaTidakIkut} <span className="text-xs font-medium text-amber-700">/ {totalSiswa} Siswa</span>
+                </div>
+                <span className="text-[11px] text-amber-700 mt-1 block">
+                  Terlambat, izin, atau belum scan
+                </span>
+              </div>
+            </div>
+
+            {/* Explanatory Rule Pill */}
+            <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-2 text-xs text-slate-600">
+              <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                <strong>Aturan:</strong> Siswa yang terlambat (scan lewat 07.18 WIB) otomatis tidak dihitung sebagai peserta upacara/jumtak.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Bento Grid Analytics with 3D Depth */}
       <div ref={bentoRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4 perspective-1000">
