@@ -104,23 +104,39 @@ export default function Dashboard({ user, onNavigate, addToast }) {
     EventIcon = HeartHandshake;
   }
 
+  // Determine if today is an active school day with attendance
+  const isHariAktif = data.kondisi === 'AKTIF';
+  const devTime = getDeviceTime();
+  const isAfterUpacaraCutoff = devTime.menit >= (7 * 60 + 18); // 07:18 WIB
+  const isAfterMasukCutoff = devTime.menit >= 13 * 60; // 13:00 WIB
+
   // Participation logic:
-  // Only students who arrived on time (hadir before 07.18 WIB) count as participating
-  const siswaIkut = data.hadir || 0;
-  const persenIkut = totalSiswa ? Math.round((siswaIkut / totalSiswa) * 100) : 0;
-  const siswaTidakIkut = Math.max(0, totalSiswa - siswaIkut);
-  const persenTidakIkut = 100 - persenIkut;
+  // If weekend / holiday / non-active day: everything is 0 (no false penalties on weekend!)
+  let siswaIkut = 0;
+  let persenIkut = 0;
+  let siswaTidakIkut = 0;
+  let persenTidakIkut = 0;
+
+  if (isHariAktif) {
+    siswaIkut = data.hadir || 0;
+    persenIkut = totalSiswa ? Math.round((siswaIkut / totalSiswa) * 100) : 0;
+
+    // Only mark students as "Tidak Mengikuti" after 07.18 WIB cutoff
+    // Before 07.18 WIB, students are still arriving at the gate
+    if (isAfterUpacaraCutoff) {
+      siswaTidakIkut = Math.max(0, totalSiswa - siswaIkut);
+      persenTidakIkut = 100 - persenIkut;
+    }
+  }
 
   // Circular progress math (radius 48 -> circumference ~301.59)
   const radius = 48;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (persenIkut / 100) * circumference;
+  const strokeDashoffset = isHariAktif ? circumference - (persenIkut / 100) * circumference : circumference;
 
-  // Determine if morning gate has passed 13:00 WIB
-  const devTime = getDeviceTime();
-  const isAfterMasukCutoff = devTime.menit >= 13 * 60; // 13:00 WIB
-  const belumScan = Math.max(0, totalSiswa - totalMasuk - (data.izin || 0));
-  const tampilkanAlfa = isAfterMasukCutoff && data.kondisi === 'AKTIF';
+  // Students who have not scanned yet (ONLY on active school days)
+  const belumScan = isHariAktif ? Math.max(0, totalSiswa - totalMasuk - (data.izin || 0)) : 0;
+  const tampilkanAlfa = isAfterMasukCutoff && isHariAktif;
   const angkaAlfa = tampilkanAlfa ? (data.alfa || belumScan) : 0;
 
   const getStatusBadge = (status) => {
@@ -189,7 +205,9 @@ export default function Dashboard({ user, onNavigate, addToast }) {
               {eventTitle}
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              {eventSubtitle}
+              {!isHariAktif
+                ? 'Tidak ada kegiatan upacara atau absensi pada akhir pekan / hari libur.'
+                : eventSubtitle}
             </p>
           </div>
         </div>
@@ -251,7 +269,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
                   {siswaIkut} <span className="text-xs font-medium text-emerald-700">/ {totalSiswa} Siswa</span>
                 </div>
                 <span className="text-[11px] text-emerald-700 mt-1 block">
-                  Scan masuk sebelum 07.18 WIB
+                  {!isHariAktif ? 'Sekolah libur / akhir pekan' : 'Scan masuk sebelum 07.18 WIB'}
                 </span>
               </div>
 
@@ -267,7 +285,11 @@ export default function Dashboard({ user, onNavigate, addToast }) {
                   {siswaTidakIkut} <span className="text-xs font-medium text-amber-700">/ {totalSiswa} Siswa</span>
                 </div>
                 <span className="text-[11px] text-amber-700 mt-1 block">
-                  Terlambat, izin, atau belum scan
+                  {!isHariAktif
+                    ? 'Tidak ada kegiatan hari ini'
+                    : !isAfterUpacaraCutoff
+                    ? 'Sesi masuk sedang berlangsung'
+                    : 'Terlambat, izin, atau belum hadir'}
                 </span>
               </div>
             </div>
@@ -276,7 +298,9 @@ export default function Dashboard({ user, onNavigate, addToast }) {
             <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-2 text-xs text-slate-600">
               <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
               <span>
-                <strong>Aturan:</strong> Siswa yang terlambat (scan lewat 07.18 WIB) otomatis tidak dihitung sebagai peserta upacara/jumtak.
+                {!isHariAktif
+                  ? 'Sistem absensi dan upacara bendera akan mulai aktif pada hari Senin pukul 06.00 WIB.'
+                  : 'Siswa yang datang terlambat (scan lewat 07.18 WIB) otomatis tidak dihitung sebagai peserta upacara/jumtak.'}
               </span>
             </div>
           </div>
