@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { LogIn, Wifi, ShieldCheck, KeyRound, User, Lock, Sparkles } from 'lucide-react';
+import { LogIn, Wifi, User, Lock } from 'lucide-react';
 import { apiCall, CONFIG } from '../utils/api';
 import { playSuccessBeep, playErrorBuzz, triggerHaptic } from '../utils/audio';
 
@@ -16,32 +16,23 @@ export default function Login({ onLoginSuccess, addToast }) {
   const formRef = useRef(null);
 
   useEffect(() => {
-    // 3D Parallax floating cards animation
+    // 3D parallax floating cards
     if (card1Ref.current && card2Ref.current) {
-      gsap.set(card1Ref.current, { z: 50, rotationZ: -4 });
-      gsap.set(card2Ref.current, { z: -40, rotationZ: 6, x: 42, y: 32 });
+      gsap.set(card1Ref.current, { z: 60, rotationZ: -5, rotationY: -8 });
+      gsap.set(card2Ref.current, { z: -50, rotationZ: 7, rotationY: 5, x: 44, y: 36 });
 
-      gsap.to(card1Ref.current, {
-        y: -10,
-        duration: 2.8,
-        yoyo: true,
-        repeat: -1,
-        ease: 'sine.inOut'
-      });
-      gsap.to(card2Ref.current, {
-        y: 38,
-        duration: 3.4,
-        yoyo: true,
-        repeat: -1,
-        ease: 'sine.inOut'
-      });
+      gsap.to(card1Ref.current, { y: -14, rotationZ: -3, duration: 3.2, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      gsap.to(card2Ref.current, { y: 42, rotationZ: 9, duration: 4.1, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+
+      // Subtle glow pulse on front card
+      gsap.to(card1Ref.current, { boxShadow: '0 44px 80px -20px rgba(23,43,77,0.75), inset 0 1px 0 #fff', duration: 2.5, yoyo: true, repeat: -1, ease: 'sine.inOut' });
     }
 
     if (formRef.current) {
       gsap.fromTo(
         formRef.current,
-        { opacity: 0, y: 40, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: 'power3.out' }
+        { opacity: 0, y: 50, scale: 0.93 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power3.out', delay: 0.1 }
       );
     }
   }, []);
@@ -160,7 +151,7 @@ export default function Login({ onLoginSuccess, addToast }) {
             <div className="text-sm font-semibold opacity-70">SMKN 7 Pandeglang</div>
           </div>
 
-          {/* Card 1: Front Student ID Card */}
+          {/* Card 1: Front QR Card — dekorasi saja, tanpa nama siswa */}
           <div
             ref={card1Ref}
             className="absolute inset-0 rounded-3xl p-6 flex flex-col justify-between border border-white/60 shadow-[0_30px_50px_-20px_rgba(0,0,0,0.6),inset_0_1px_0_#ffffff] bg-gradient-to-br from-white via-[#EEF4FD] to-[#D5E3F7] text-[#172B4D]"
@@ -175,17 +166,9 @@ export default function Login({ onLoginSuccess, addToast }) {
               </div>
             </div>
 
-            <div className="flex items-end justify-between mt-auto pt-4 border-t border-blue-900/10">
-              <div>
-                <span className="font-heading font-extrabold text-base tracking-tight text-[#172B4D]">Ahmad Rizko</span>
-                <span className="block text-xs font-semibold text-slate-500">XI TKJ 2</span>
-                <code className="inline-block mt-1 px-2 py-0.5 rounded-md bg-blue-900/10 text-xs font-mono font-bold tracking-widest text-[#315E9E]">
-                  K7M2-X9QD
-                </code>
-              </div>
-
-              {/* QR Code Graphic Mockup */}
-              <div className="w-16 h-16 rounded-xl bg-white p-1.5 border border-blue-200 shadow-sm flex items-center justify-center">
+            {/* QR Dekorasi — tengah card */}
+            <div className="flex items-center justify-center py-4">
+              <div className="w-24 h-24 rounded-2xl bg-white p-2.5 border border-blue-200/60 shadow-md flex items-center justify-center">
                 <svg viewBox="0 0 21 21" className="w-full h-full" shapeRendering="crispEdges">
                   <rect x="0" y="0" width="7" height="7" fill="#172B4D"/>
                   <rect x="1" y="1" width="5" height="5" fill="#fff"/>
@@ -204,6 +187,11 @@ export default function Login({ onLoginSuccess, addToast }) {
                   <rect x="15" y="16" width="4" height="2" fill="#172B4D"/>
                 </svg>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-blue-900/10">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Absensi Digital</span>
+              <span className="text-[11px] font-mono font-bold text-[#315E9E]/60">SMKN-7</span>
             </div>
           </div>
         </div>
@@ -226,7 +214,7 @@ export default function Login({ onLoginSuccess, addToast }) {
           </div>
 
           <p className="text-xs sm:text-sm text-slate-300 mb-6">
-            Masuk dengan akun <span className="font-semibold text-white">Guru</span> atau <span className="font-semibold text-white">Admin</span> untuk mulai absensi.
+            Masuk dengan akun <span className="font-semibold text-white">Guru</span> atau <span className="font-semibold text-white">Admin</span> untuk memulai sesi absensi.
           </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -271,7 +259,7 @@ export default function Login({ onLoginSuccess, addToast }) {
             </button>
           </form>
 
-          {/* Helper & Test Connection */}
+          {/* Test Connection */}
           <div className="mt-6 pt-5 border-t border-white/10 flex flex-col items-center gap-3">
             <button
               type="button"
@@ -280,15 +268,8 @@ export default function Login({ onLoginSuccess, addToast }) {
               className="text-xs text-blue-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Wifi className={`w-3.5 h-3.5 ${testingConn ? 'animate-spin' : ''}`} />
-              <span>{testingConn ? 'Menghubungkan...' : 'Tes Koneksi Server Apps Script'}</span>
+              <span>{testingConn ? 'Menghubungkan...' : 'Tes Koneksi Server'}</span>
             </button>
-
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center w-full">
-              <span className="text-[11px] text-blue-200 block">Akun default sistem:</span>
-              <span className="text-xs font-mono text-white/90">
-                admin / admin123 &nbsp;•&nbsp; guru / guru123
-              </span>
-            </div>
           </div>
         </div>
       </div>

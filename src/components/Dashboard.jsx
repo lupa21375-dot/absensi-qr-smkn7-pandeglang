@@ -12,9 +12,10 @@ import {
   Printer,
   ChevronRight,
   TrendingUp,
-  Sparkles
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
-import { apiCall } from '../utils/api';
+import { apiCall, getDeviceTime } from '../utils/api';
 
 export default function Dashboard({ user, onNavigate, addToast }) {
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
     tanggal: '',
     kondisi: 'AKTIF',
     keterangan: '',
-    totalSiswa: 0,
+    totalSiswa: 1083,
     hadir: 0,
     terlambat: 0,
     izin: 0,
@@ -38,36 +39,32 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      const res = await apiCall('getDashboard', { limitRiwayat: 20 }, user?.sesi);
+      const res = await apiCall('getDashboard', { limitRiwayat: 30 }, user?.sesi);
       setData(res);
 
-      // Animate numbers
       if (bentoRef.current) {
         gsap.fromTo(
           bentoRef.current.children,
-          { opacity: 0, y: 30, scale: 0.95 },
-          { opacity: 1, y: 0, scale: 1, stagger: 0.08, duration: 0.6, ease: 'back.out(1.4)' }
+          { opacity: 0, y: 25, scale: 0.96 },
+          { opacity: 1, y: 0, scale: 1, stagger: 0.06, duration: 0.5, ease: 'power2.out' }
         );
       }
     } catch (err) {
-      console.warn('Dashboard fetch error:', err);
-      // Fallback mock representation for smooth demo
+      console.warn('Dashboard fetch notice:', err);
+      // Clean fallback using real device date & empty stats (no dummy data)
+      const devTime = getDeviceTime();
       setData((prev) => ({
         ...prev,
-        hari: 'Jumat',
-        tanggal: '20/11/2026',
+        hari: 'Hari Ini',
+        tanggal: devTime.tgl,
         kondisi: 'AKTIF',
         totalSiswa: 1083,
-        hadir: 24,
-        terlambat: 3,
-        izin: 2,
+        hadir: 0,
+        terlambat: 0,
+        izin: 0,
         pulang: 0,
-        alfa: 1054,
-        riwayat: [
-          { jam: '07.10', tipe: 'MASUK', nama: 'Ahmad Rizko', kelas: 'XI TKJ 2', status: 'HADIR' },
-          { jam: '07.24', tipe: 'MASUK', nama: 'Karla Febriyanti', kelas: 'XI TKJ 2', status: 'HADIR (TERLAMBAT 6 menit)' },
-          { jam: '08.15', tipe: 'IZIN', nama: 'Siti Sarah', kelas: 'XII AKL 2', status: 'IZIN', keterangan: 'Sakit demam' }
-        ]
+        alfa: 0,
+        riwayat: []
       }));
     } finally {
       setLoading(false);
@@ -79,9 +76,22 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   }, []);
 
   const totalMasuk = (data.hadir || 0) + (data.terlambat || 0);
-  const percentage = data.totalSiswa ? Math.round((totalMasuk / data.totalSiswa) * 100) : 0;
+  const totalSiswa = data.totalSiswa || 1083;
+  const percentage = totalSiswa ? Math.round((totalMasuk / totalSiswa) * 100) : 0;
+
+  // Determine if morning gate has passed 13:00 WIB
+  const devTime = getDeviceTime();
+  const isAfterMasukCutoff = devTime.menit >= 13 * 60; // 13:00 WIB
+
+  // Students who have not scanned yet
+  const belumScan = Math.max(0, totalSiswa - totalMasuk - (data.izin || 0));
+
+  // Alfa is ONLY displayed after gate masuk closes (13:00 WIB) on active days
+  const tampilkanAlfa = isAfterMasukCutoff && data.kondisi === 'AKTIF';
+  const angkaAlfa = tampilkanAlfa ? (data.alfa || belumScan) : 0;
 
   const getStatusBadge = (status) => {
+    if (!status) return 'badge-gr';
     if (status.startsWith('HADIR (TERLAMBAT')) return 'badge-late';
     if (status.startsWith('HADIR')) return 'badge-ok';
     if (status.startsWith('IZIN')) return 'badge-iz';
@@ -96,10 +106,10 @@ export default function Dashboard({ user, onNavigate, addToast }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#172B4D] tracking-tight">
-            Halo, {user?.nama || 'Bapak/Ibu Guru'} 👋
+            Halo, {user?.nama || 'Petugas Piket'}
           </h2>
-          <p className="text-sm text-slate-500 font-medium">
-            {data.hari ? `${data.hari}, ${data.tanggal}` : 'Memuat data kehadiran sekolah...'}
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            {data.hari ? `${data.hari}, ${data.tanggal}` : 'Sistem Absensi Digital SMKN 7 Pandeglang'}
           </p>
         </div>
 
@@ -116,7 +126,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
               onClick={() => onNavigate('rekap')}
               className="btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 text-blue-700" />
               <span>Lihat Rekap</span>
             </button>
           </div>
@@ -127,7 +137,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
       {data.kondisi && data.kondisi !== 'AKTIF' && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-          <div className="text-sm font-semibold">
+          <div className="text-xs sm:text-sm font-semibold">
             {data.kondisi === 'LIBUR'
               ? `Hari ini Libur Sekolah: ${data.keterangan || 'Libur Nasional'}`
               : `Tidak ada jadwal absensi aktif hari ini (${data.keterangan || data.hari}).`}
@@ -135,26 +145,30 @@ export default function Dashboard({ user, onNavigate, addToast }) {
         </div>
       )}
 
-      {/* Bento Grid Analytics */}
-      <div ref={bentoRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Big Card: Hadir Tepat Waktu */}
-        <div className="col-span-2 row-span-2 card p-6 sm:p-7 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute -right-8 -top-8 w-44 h-44 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
+      {/* Bento Grid Analytics with 3D Depth */}
+      <div ref={bentoRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4 perspective-1000">
+        {/* Big Bento Card: Hadir Tepat Waktu */}
+        <div className="col-span-2 row-span-2 card p-6 sm:p-7 flex flex-col justify-between relative overflow-hidden tilt-card group">
+          <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-emerald-500/15 blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Hadir Tepat Waktu
               </span>
-              <span className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
+              <span className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold text-xs">
                 OK
               </span>
             </div>
-            <div ref={hadirCountRef} className="font-heading font-extrabold text-5xl sm:text-7xl text-emerald-700 mt-3 tabular-nums">
+            <div
+              ref={hadirCountRef}
+              className="font-heading font-extrabold text-5xl sm:text-7xl text-emerald-700 mt-3 tabular-nums"
+              style={{ transform: 'translateZ(24px)' }}
+            >
               {data.hadir || 0}
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-medium mt-2">
               <span className="font-bold text-slate-700">{percentage}%</span> dari total{' '}
-              <span className="font-bold text-slate-700">{data.totalSiswa || 1083}</span> siswa aktif
+              <span className="font-bold text-slate-700">{totalSiswa}</span> siswa aktif
             </p>
           </div>
 
@@ -169,43 +183,59 @@ export default function Dashboard({ user, onNavigate, addToast }) {
         </div>
 
         {/* Terlambat */}
-        <div className="card p-5 relative overflow-hidden group">
+        <div className="card p-5 relative overflow-hidden tilt-card group">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-amber-500/15 blur-xl pointer-events-none" />
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Terlambat</span>
-          <div className="font-heading font-extrabold text-3xl sm:text-4xl text-amber-700 mt-2 tabular-nums">
+          <div
+            className="font-heading font-extrabold text-3xl sm:text-4xl text-amber-700 mt-2 tabular-nums"
+            style={{ transform: 'translateZ(18px)' }}
+          >
             {data.terlambat || 0}
           </div>
           <span className="text-[11px] text-slate-400 font-medium mt-1 block">Lewat 07.18 WIB</span>
         </div>
 
         {/* Izin */}
-        <div className="card p-5 relative overflow-hidden group">
+        <div className="card p-5 relative overflow-hidden tilt-card group">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-blue-500/15 blur-xl pointer-events-none" />
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Izin</span>
-          <div className="font-heading font-extrabold text-3xl sm:text-4xl text-blue-700 mt-2 tabular-nums">
+          <div
+            className="font-heading font-extrabold text-3xl sm:text-4xl text-blue-700 mt-2 tabular-nums"
+            style={{ transform: 'translateZ(18px)' }}
+          >
             {data.izin || 0}
           </div>
           <span className="text-[11px] text-slate-400 font-medium mt-1 block">Tercatat di piket</span>
         </div>
 
         {/* Pulang */}
-        <div className="card p-5 relative overflow-hidden group">
+        <div className="card p-5 relative overflow-hidden tilt-card group">
           <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-indigo-500/15 blur-xl pointer-events-none" />
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pulang</span>
-          <div className="font-heading font-extrabold text-3xl sm:text-4xl text-indigo-700 mt-2 tabular-nums">
+          <div
+            className="font-heading font-extrabold text-3xl sm:text-4xl text-indigo-700 mt-2 tabular-nums"
+            style={{ transform: 'translateZ(18px)' }}
+          >
             {data.pulang || 0}
           </div>
           <span className="text-[11px] text-slate-400 font-medium mt-1 block">Scan sore 15.30+</span>
         </div>
 
-        {/* Alfa */}
-        <div className="card p-5 relative overflow-hidden group">
-          <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-rose-500/15 blur-xl pointer-events-none" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Belum Scan (Alfa)</span>
-          <div className="font-heading font-extrabold text-3xl sm:text-4xl text-rose-700 mt-2 tabular-nums">
-            {data.alfa ?? Math.max(0, (data.totalSiswa || 1083) - totalMasuk - (data.izin || 0))}
+        {/* Alfa / Status Belum Scan */}
+        <div className="card p-5 relative overflow-hidden tilt-card group">
+          <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-xl pointer-events-none ${tampilkanAlfa ? 'bg-rose-500/15' : 'bg-slate-400/15'}`} />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            {tampilkanAlfa ? 'Alfa (Tidak Hadir)' : 'Belum Scan'}
+          </span>
+          <div
+            className={`font-heading font-extrabold text-3xl sm:text-4xl mt-2 tabular-nums ${tampilkanAlfa ? 'text-rose-700' : 'text-slate-600'}`}
+            style={{ transform: 'translateZ(18px)' }}
+          >
+            {tampilkanAlfa ? angkaAlfa : belumScan}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium mt-1 block">Dihitung otomatis</span>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {tampilkanAlfa ? 'Dihitung otomatis hari ini' : 'Dihitung Alfa setelah 13.00 WIB'}
+          </span>
         </div>
       </div>
 
@@ -250,8 +280,8 @@ export default function Dashboard({ user, onNavigate, addToast }) {
       <div className="card p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-heading font-extrabold text-lg text-[#172B4D]">Aktivitas Terbaru Hari Ini</h3>
-            <p className="text-xs text-slate-500 font-medium">Log scan real-time siswa yang masuk atau izin</p>
+            <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#172B4D]">Aktivitas Scan Hari Ini</h3>
+            <p className="text-xs text-slate-500 font-medium">Log scan real-time kehadiran siswa yang masuk atau izin</p>
           </div>
           <button
             onClick={() => onNavigate('riwayat')}
@@ -287,7 +317,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
             ))}
           </div>
         ) : (
-          <div className="py-8 text-center text-slate-400 text-sm font-medium">
+          <div className="py-8 text-center text-slate-400 text-xs sm:text-sm font-medium">
             Belum ada aktivitas scan siswa hari ini.
           </div>
         )}

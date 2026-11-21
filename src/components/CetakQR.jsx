@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { Printer, RefreshCw, Filter, Sparkles } from 'lucide-react';
+import { Printer, RefreshCw, Filter } from 'lucide-react';
 import { ALL_STUDENTS } from '../data/students';
 
 export default function CetakQR({ user, addToast }) {

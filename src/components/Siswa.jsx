@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Filter, Check, X, ShieldAlert, Sparkles } from 'lucide-react';
+import { Search, UserPlus, Filter, Check, X, ShieldAlert } from 'lucide-react';
 import { apiCall } from '../utils/api';
 import { ALL_STUDENTS } from '../data/students';
 

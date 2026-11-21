@@ -173,6 +173,58 @@
   color: var(--mu);
 }
 
+/* 3D Bento & Card Interactive Utilities */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.tilt-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.tilt-card:hover {
+  transform: translateY(-4px) rotateX(2deg) rotateY(-1deg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 28px 48px -18px rgba(23, 43, 77, 0.32), 0 6px 14px rgba(23, 43, 77, 0.08);
+}
+
+/* Html5Qrcode Scanner Video Constraints */
+#qr-reader-container,
+[id^="qr-reader-"] {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #020617 !important;
+}
+
+#qr-reader-container video,
+[id^="qr-reader-"] video {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 28px !important;
+}
+
+#qr-reader-container canvas,
+[id^="qr-reader-"] canvas {
+  display: none !important;
+}
+
+#qr-shaded-region,
+.__html5qr_shaded_region__ {
+  display: none !important;
+}
+
 /* QR Card Print Layout */
 @media print {
   body {
