@@ -10,8 +10,10 @@ export default function Riwayat({ user, addToast }) {
   const loadRiwayat = async () => {
     setLoading(true);
     try {
-      const res = await apiCall('getDashboard', { limitRiwayat: 200 }, user?.sesi);
+      // Selalu bypass cache dengan menambahkan timestamp/fresh parameter
+      const res = await apiCall('getDashboard', { limitRiwayat: 200, _t: Date.now() }, user?.sesi);
       setRiwayat(res.riwayat || []);
+      addToast('Data riwayat berhasil diperbarui', 'success');
     } catch (err) {
       addToast(err.message || 'Gagal memuat riwayat', 'error');
     } finally {

@@ -1,25 +1,67 @@
-import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Activity, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowUpRight, ArrowDownRight, Activity, RefreshCw } from 'lucide-react';
+import { apiCall, getDeviceTime } from '../utils/api';
+
+// Template 12 bulan tahun ajaran (Juli - Juni), semua mulai 0
+const MONTH_TEMPLATE = [
+  { bulan: 'Juli',      short: 'Jul', note: 'Awal Tahun Ajaran / MPLS' },
+  { bulan: 'Agustus',   short: 'Agu', note: 'Kegiatan HUT RI & Upacara' },
+  { bulan: 'September', short: 'Sep', note: 'Penilaian Tengah Semester' },
+  { bulan: 'Oktober',   short: 'Okt', note: 'Bulan Bahasa & P5' },
+  { bulan: 'November',  short: 'Nov', note: 'Kegiatan Bulanan' },
+  { bulan: 'Desember',  short: 'Des', note: 'Penilaian Akhir Semester' },
+  { bulan: 'Januari',   short: 'Jan', note: 'Awal Semester Genap' },
+  { bulan: 'Februari',  short: 'Feb', note: 'Persiapan Uji Kompetensi' },
+  { bulan: 'Maret',     short: 'Mar', note: 'Prakerin & Ujian Praktik' },
+  { bulan: 'April',     short: 'Apr', note: 'Kegiatan April' },
+  { bulan: 'Mei',       short: 'Mei', note: 'Penilaian Akhir Tahun' },
+  { bulan: 'Juni',      short: 'Jun', note: 'Pekan Remedial & Rapor' }
+];
 
 export default function StockTrendChart() {
-  const [activeFilter, setActiveFilter] = useState('full'); // 'full' | 'ganjil' | 'genap'
+  const [activeFilter, setActiveFilter] = useState('full');
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [FULL_DATA, setFullData] = useState([]);
+  const [loadingChart, setLoadingChart] = useState(true);
+  const [hasRealData, setHasRealData] = useState(false);
 
-  // 12 Months of the Academic Year (Juli s.d Juni)
-  const FULL_DATA = [
-    { bulan: 'Juli', short: 'Jul', persen: 94.5, hadir: 1023, telat: 34, izin: 26, note: 'Awal Tahun Ajaran / MPLS' },
-    { bulan: 'Agustus', short: 'Agu', persen: 96.8, hadir: 1048, telat: 21, izin: 14, note: 'Kegiatan HUT RI & Upacara' },
-    { bulan: 'September', short: 'Sep', persen: 98.2, hadir: 1063, telat: 12, izin: 8, note: 'Puncak Kedisiplinan Tertinggi' },
-    { bulan: 'Oktober', short: 'Okt', persen: 97.4, hadir: 1055, telat: 18, izin: 10, note: 'Bulan Bahasa & P5' },
-    { bulan: 'November', short: 'Nov', persen: 96.9, hadir: 1049, telat: 22, izin: 12, note: 'Bulan Berjalan (Aktif)' },
-    { bulan: 'Desember', short: 'Des', persen: 93.4, hadir: 1011, telat: 38, izin: 34, note: 'Penilaian Akhir Semester' },
-    { bulan: 'Januari', short: 'Jan', persen: 97.5, hadir: 1056, telat: 16, izin: 11, note: 'Awal Semester Genap' },
-    { bulan: 'Februari', short: 'Feb', persen: 98.0, hadir: 1061, telat: 14, izin: 8, note: 'Persiapan Uji Kompetensi' },
-    { bulan: 'Maret', short: 'Mar', persen: 96.2, hadir: 1042, telat: 25, izin: 16, note: 'Prakerin & Ujian Praktik' },
-    { bulan: 'April', short: 'Apr', persen: 95.8, hadir: 1037, telat: 28, izin: 18, note: 'Jadwal Khusus Ramadhan' },
-    { bulan: 'Mei', short: 'Mei', persen: 97.1, hadir: 1052, telat: 19, izin: 12, note: 'Penilaian Akhir Tahun' },
-    { bulan: 'Juni', short: 'Jun', persen: 93.8, hadir: 1016, telat: 35, izin: 32, note: 'Pekan Remedial & Rapor' }
-  ];
+  const fetchBulanan = async () => {
+    setLoadingChart(true);
+    try {
+      const devTime = getDeviceTime();
+      const res = await apiCall('getRekapBulanan', { tahunAjaran: '2026/2027' }, null);
+      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        // Merge template dengan data real dari API
+        const merged = MONTH_TEMPLATE.map((tmpl) => {
+          const found = res.data.find(d => d.bulan === tmpl.bulan);
+          return {
+            ...tmpl,
+            persen: found ? (found.persen || 0) : 0,
+            hadir: found ? (found.hadir || 0) : 0,
+            telat: found ? (found.telat || 0) : 0,
+            izin: found ? (found.izin || 0) : 0,
+          };
+        });
+        const hasAny = merged.some(m => m.persen > 0);
+        setFullData(merged);
+        setHasRealData(hasAny);
+      } else {
+        // Tidak ada data sama sekali: semua 0
+        setFullData(MONTH_TEMPLATE.map(t => ({ ...t, persen: 0, hadir: 0, telat: 0, izin: 0 })));
+        setHasRealData(false);
+      }
+    } catch {
+      // Fallback: semua 0, tidak ada data
+      setFullData(MONTH_TEMPLATE.map(t => ({ ...t, persen: 0, hadir: 0, telat: 0, izin: 0 })));
+      setHasRealData(false);
+    } finally {
+      setLoadingChart(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBulanan();
+  }, []);
 
   const currentData = activeFilter === 'ganjil'
     ? FULL_DATA.slice(0, 6)
@@ -33,14 +75,14 @@ export default function StockTrendChart() {
   const paddingX = 40;
   const paddingY = 35;
 
-  const minVal = 90; // 90%
+  const minVal = 0; // Mulai dari 0%
   const maxVal = 100; // 100%
 
-  const getX = (idx) => paddingX + (idx / (currentData.length - 1)) * (width - 2 * paddingX);
+  const getX = (idx) => paddingX + (idx / Math.max(1, currentData.length - 1)) * (width - 2 * paddingX);
   const getY = (val) => height - paddingY - ((val - minVal) / (maxVal - minVal)) * (height - 2 * paddingY);
 
   // Generate SVG cubic bezier path
-  const points = currentData.map((d, i) => ({ x: getX(i), y: getY(d.persen) }));
+  const points = currentData.map((d, i) => ({ x: getX(i), y: getY(d.persen || 0) }));
   
   let pathD = '';
   if (points.length > 0) {
@@ -63,16 +105,16 @@ export default function StockTrendChart() {
   const areaD = pathD ? `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z` : '';
 
   // Stats calculation
-  const values = currentData.map((d) => d.persen);
-  const maxPersen = Math.max(...values);
-  const minPersen = Math.min(...values);
-  const peakMonth = currentData.find((d) => d.persen === maxPersen);
-  const dipMonth = currentData.find((d) => d.persen === minPersen);
+  const values = currentData.map((d) => d.persen || 0);
+  const maxPersen = values.length ? Math.max(...values) : 0;
+  const minPersen = values.length ? Math.min(...values) : 0;
+  const peakMonth = currentData.find((d) => (d.persen || 0) === maxPersen) || currentData[0];
+  const dipMonth = currentData.find((d) => (d.persen || 0) === minPersen) || currentData[0];
 
   // Delta comparison (last 2 points)
   const lastIdx = currentData.length - 1;
-  const delta = (currentData[lastIdx].persen - currentData[lastIdx - 1]?.persen).toFixed(1);
-  const isUp = delta >= 0;
+  const delta = currentData.length > 1 ? ((currentData[lastIdx]?.persen || 0) - (currentData[lastIdx - 1]?.persen || 0)).toFixed(1) : "0.0";
+  const isUp = Number(delta) >= 0;
 
   const activeItem = hoveredIndex !== null ? currentData[hoveredIndex] : currentData[currentData.length - 1];
 
@@ -87,14 +129,16 @@ export default function StockTrendChart() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-heading font-extrabold text-base text-[#172B4D]">
-                Grafik Tren Kehadiran Siswa
+                Grafik Kehadiran Siswa
               </h3>
-              <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-                isUp ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}>
-                {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                {isUp ? `+${delta}%` : `${delta}%`} vs Bln Lalu
-              </span>
+              {hasRealData && (
+                <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
+                  isUp ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                  {isUp ? `+${delta}%` : `${delta}%`} vs Bln Lalu
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 font-medium">
               Fluktuasi kedisiplinan dan rata-rata absensi per bulan (Tahun Ajaran 2026/2027)
@@ -135,23 +179,23 @@ export default function StockTrendChart() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
         <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60">
           <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Fokus Sorotan</span>
-          <span className="font-heading font-extrabold text-sm text-[#172B4D]">{activeItem?.bulan} 2026</span>
-          <span className="text-[10px] text-slate-500 block truncate">{activeItem?.note}</span>
+          <span className="font-heading font-extrabold text-sm text-[#172B4D]">{activeItem?.bulan || '-'}</span>
+          <span className="text-[10px] text-slate-500 block truncate">{hasRealData ? activeItem?.note : 'Belum ada aktivitas'}</span>
         </div>
         <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/60">
           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 block">Puncak Disiplin</span>
-          <span className="font-heading font-extrabold text-sm text-emerald-800">{peakMonth?.persen}%</span>
-          <span className="text-[10px] text-emerald-600 block">{peakMonth?.bulan}</span>
+          <span className="font-heading font-extrabold text-sm text-emerald-800">{hasRealData ? `${peakMonth?.persen || 0}%` : '0%'}</span>
+          <span className="text-[10px] text-emerald-600 block">{hasRealData ? peakMonth?.bulan : '-'}</span>
         </div>
         <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/60">
           <span className="text-[10px] uppercase font-bold tracking-wider text-amber-700 block">Lembah Penurunan</span>
-          <span className="font-heading font-extrabold text-sm text-amber-800">{dipMonth?.persen}%</span>
-          <span className="text-[10px] text-amber-600 block">{dipMonth?.bulan}</span>
+          <span className="font-heading font-extrabold text-sm text-amber-800">{hasRealData ? `${dipMonth?.persen || 0}%` : '0%'}</span>
+          <span className="text-[10px] text-amber-600 block">{hasRealData ? dipMonth?.bulan : '-'}</span>
         </div>
         <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200/60">
           <span className="text-[10px] uppercase font-bold tracking-wider text-[#315E9E] block">Rata-Rata Tahunan</span>
           <span className="font-heading font-extrabold text-sm text-[#172B4D]">
-            {(values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)}%
+            {hasRealData && values.length ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 0}%
           </span>
           <span className="text-[10px] text-blue-600 block">Target: &gt;95%</span>
         </div>
@@ -174,8 +218,8 @@ export default function StockTrendChart() {
               </linearGradient>
             </defs>
 
-            {/* Grid Horizontal Guidelines */}
-            {[90, 92.5, 95, 97.5, 100].map((val) => {
+            {/* Grid Horizontal Guidelines: 0, 25, 50, 75, 100 */}
+            {[0, 25, 50, 75, 100].map((val) => {
               const y = getY(val);
               return (
                 <g key={val}>
@@ -201,15 +245,16 @@ export default function StockTrendChart() {
             })}
 
             {/* Area Fill */}
-            {areaD && <path d={areaD} fill="url(#stockGradient)" />}
+            {hasRealData && areaD && <path d={areaD} fill="url(#stockGradient)" />}
 
             {/* Spline Stroke Line */}
             {pathD && (
               <path
                 d={pathD}
                 fill="none"
-                stroke="url(#lineGrad)"
-                strokeWidth="3.5"
+                stroke={hasRealData ? "url(#lineGrad)" : "#CBD5E1"}
+                strokeWidth={hasRealData ? "3.5" : "2"}
+                strokeDasharray={hasRealData ? "none" : "5 5"}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -218,7 +263,7 @@ export default function StockTrendChart() {
             {/* Interactive Data Dots & Hover Hitboxes */}
             {currentData.map((d, i) => {
               const x = getX(i);
-              const y = getY(d.persen);
+              const y = getY(d.persen || 0);
               const isHovered = hoveredIndex === i;
 
               return (
@@ -229,7 +274,6 @@ export default function StockTrendChart() {
                   onClick={() => setHoveredIndex(i)}
                   className="cursor-pointer"
                 >
-                  {/* Invisible generous hitbox for easy mouse/touch */}
                   <rect
                     x={x - 20}
                     y={paddingY}
@@ -238,7 +282,6 @@ export default function StockTrendChart() {
                     fill="transparent"
                   />
 
-                  {/* Vertical hover marker line */}
                   {isHovered && (
                     <line
                       x1={x}
@@ -251,7 +294,6 @@ export default function StockTrendChart() {
                     />
                   )}
 
-                  {/* Dot */}
                   <circle
                     cx={x}
                     cy={y}
@@ -262,7 +304,6 @@ export default function StockTrendChart() {
                     className="transition-all duration-200"
                   />
 
-                  {/* Month Label */}
                   <text
                     x={x}
                     y={height - 12}
@@ -274,7 +315,6 @@ export default function StockTrendChart() {
                     {d.short}
                   </text>
 
-                  {/* Percentage label above dot on hover */}
                   {isHovered && (
                     <g transform={`translate(${x}, ${y - 12})`}>
                       <rect
@@ -292,7 +332,7 @@ export default function StockTrendChart() {
                         fill="#FFFFFF"
                         className="text-[10px] font-mono font-bold"
                       >
-                        {d.persen}%
+                        {d.persen || 0}%
                       </text>
                     </g>
                   )}

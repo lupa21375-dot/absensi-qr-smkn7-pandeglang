@@ -229,7 +229,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 6mm;
+    margin: 6mm 4mm;
   }
 
   /* Reset all scrolling and container clipping */
@@ -284,14 +284,12 @@
 
   /* Print Grid for Cards - Exactly 2 columns of 85.6mm cards on A4 */
   .cards-print-grid {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 85.6mm) !important;
     justify-content: center !important;
-    align-items: flex-start !important;
-    gap: 4.5mm 6mm !important;
+    align-content: start !important;
+    gap: 4mm 5mm !important;
     width: 100% !important;
-    max-width: 182mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     page-break-inside: auto !important;

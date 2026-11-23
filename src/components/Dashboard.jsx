@@ -45,8 +45,27 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      const res = await apiCall('getDashboard', { limitRiwayat: 30 }, user?.sesi);
-      setData(res);
+      const devTime = getDeviceTime();
+      // Jika sudah malam setelah jam 19:30 (Habis Isya), dashboard menampilkan status siap untuk esok hari (semua 0)
+      const isNightReset = devTime.jam >= 19 && devTime.menit >= 30;
+
+      const res = await apiCall('getDashboard', { limitRiwayat: 30, tanggal: devTime.tgl, _t: Date.now() }, user?.sesi);
+      
+      if (isNightReset) {
+        // Tampilkan keadaan segar (semua 0) menjelang hari esok
+        setData({
+          ...res,
+          keterangan: 'Sesi hari ini selesai. Sistem siap untuk aktivitas esok hari.',
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          pulang: 0,
+          alfa: 0,
+          riwayat: []
+        });
+      } else {
+        setData(res);
+      }
 
       if (bentoRef.current) {
         gsap.fromTo(
