@@ -35,15 +35,15 @@ export default function Sidebar({ currentTab, onSelectTab, user, onLogout }) {
   const visibleNav = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
-    <aside className="hidden lg:flex w-64 flex-col glass rounded-[28px] m-4 p-4 border border-white/60 shadow-xl shrink-0 overflow-hidden">
+    <aside className="hidden lg:flex w-64 flex-col glass rounded-[28px] m-4 p-4 border border-white/60 shadow-xl shrink-0 overflow-hidden no-print">
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-2 py-3 mb-2 border-b border-slate-200/50">
-        <div className="w-10 h-10 rounded-2xl bg-white p-1 border border-blue-200 shadow-sm shrink-0 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-white p-1.5 border border-slate-200/80 shadow-sm shrink-0 flex items-center justify-center">
           <img src="./logo.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0">
           <h2 className="font-heading font-extrabold text-base text-[#172B4D] leading-tight truncate">
-            Absensi QR
+            S-Absensi QR
           </h2>
           <p className="text-[11px] text-slate-500 font-medium truncate">SMKN 7 Pandeglang</p>
         </div>

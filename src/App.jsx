@@ -15,6 +15,7 @@ import CetakQR from './components/CetakQR';
 import Database from './components/Database';
 import PusatBantuan from './components/PusatBantuan';
 import Pengaturan from './components/Pengaturan';
+import PortalOrtu from './components/PortalOrtu';
 import ToastContainer from './components/Toast';
 import { LS } from './utils/api';
 
@@ -87,6 +88,16 @@ export default function App() {
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <Login onLoginSuccess={handleLoginSuccess} addToast={addToast} />
       </>
+    );
+  }
+
+  // If authenticated as Parent (Wali Murid)
+  if (user?.role === 'ortu') {
+    return (
+      <div className="min-h-screen w-full overflow-y-auto px-4 pt-5 pb-16 bg-surface">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <PortalOrtu user={user} onLogout={handleLogout} addToast={addToast} />
+      </div>
     );
   }
 

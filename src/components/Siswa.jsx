@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Filter, Check, X, ShieldAlert } from 'lucide-react';
+import { Search, UserPlus, Filter, Check, X, ShieldAlert, GraduationCap, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { apiCall } from '../utils/api';
 import { ALL_STUDENTS } from '../data/students';
 
@@ -9,6 +9,9 @@ export default function Siswa({ user, addToast }) {
   const [selectedClass, setSelectedClass] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
 
   // New Student Form
   const [newNama, setNewNama] = useState('');
@@ -91,6 +94,29 @@ export default function Siswa({ user, addToast }) {
     }
   };
 
+  const handlePromoteStudents = async () => {
+    if (confirmText.trim().toUpperCase() !== 'NAIK KELAS') {
+      addToast('Ketik NAIK KELAS untuk konfirmasi', 'error');
+      return;
+    }
+    setPromoting(true);
+    try {
+      const res = await apiCall('kelolaSiswa', { aksi: 'naikKelasMassal' }, user?.sesi);
+      addToast(res.pesan || 'Kenaikan kelas massal berhasil diproses!', 'success');
+      setShowPromotionModal(false);
+      setConfirmText('');
+      loadStudents();
+    } catch (err) {
+      addToast(err.message || 'Gagal memproses kenaikan kelas', 'error');
+    } finally {
+      setPromoting(false);
+    }
+  };
+
+  const countX = students.filter((s) => s.tingkat === 'X' && s.aktif !== false).length;
+  const countXI = students.filter((s) => s.tingkat === 'XI' && s.aktif !== false).length;
+  const countXII = students.filter((s) => s.tingkat === 'XII' && s.aktif !== false).length;
+
   // Filter students based on dropdown and search query
   const filteredStudents = students.filter((s) => {
     const matchesClass = !selectedClass || s.kelas === selectedClass;
@@ -134,13 +160,22 @@ export default function Siswa({ user, addToast }) {
         </div>
 
         {isAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary w-full md:w-auto py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Tambah Siswa</span>
-          </button>
+          <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+            <button
+              onClick={() => setShowPromotionModal(true)}
+              className="btn-secondary w-full sm:w-auto py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            >
+              <GraduationCap className="w-4 h-4 text-indigo-600" />
+              <span>Kenaikan Kelas</span>
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-primary w-full sm:w-auto py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Tambah Siswa</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -216,7 +251,7 @@ export default function Siswa({ user, addToast }) {
                   type="text"
                   value={newNama}
                   onChange={(e) => setNewNama(e.target.value)}
-                  placeholder="Contoh: Muhammad Rizki"
+                  placeholder="Nama lengkap siswa"
                   className="input-field text-xs"
                   required
                 />
@@ -253,7 +288,7 @@ export default function Siswa({ user, addToast }) {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Kelas Lengkap (Contoh: X TKJ 1)
+                  Kelas Lengkap (Format: X TKJ 1)
                 </label>
                 <input
                   type="text"
@@ -278,6 +313,111 @@ export default function Siswa({ user, addToast }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Promotion Modal */}
+      {showPromotionModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="card p-6 w-full max-w-lg bg-white space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-base text-[#172B4D]">
+                    Kenaikan Kelas Massal
+                  </h3>
+                  <p className="text-xs text-slate-500">Tahun Ajaran Baru SMKN 7 Pandeglang</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPromotionModal(false);
+                  setConfirmText('');
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Sistem akan memindahkan seluruh jenjang kelas secara otomatis dalam satu kali klik. Kartu QR fisik siswa <strong className="text-[#172B4D]">tetap berlaku dan tidak perlu dicetak ulang</strong> karena kode unik siswa bersifat permanen.
+            </p>
+
+            {/* Simulation Preview Cards */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="p-3 rounded-2xl bg-blue-50/80 border border-blue-200/60 text-center">
+                <span className="text-[10px] uppercase font-bold text-blue-700 block">Kelas X → XI</span>
+                <span className="font-heading font-extrabold text-xl text-blue-900 block my-0.5">{countX}</span>
+                <span className="text-[10px] text-blue-600 block">Siswa Naik</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200/60 text-center">
+                <span className="text-[10px] uppercase font-bold text-indigo-700 block">Kelas XI → XII</span>
+                <span className="font-heading font-extrabold text-xl text-indigo-900 block my-0.5">{countXI}</span>
+                <span className="text-[10px] text-indigo-600 block">Siswa Naik</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/60 text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block">Kelas XII → Lulus</span>
+                <span className="font-heading font-extrabold text-xl text-emerald-900 block my-0.5">{countXII}</span>
+                <span className="text-[10px] text-emerald-600 block">Alumni</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-900">
+              <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong>Peringatan Admin:</strong> Tindakan ini akan memperbarui 1.083 data kelas di Google Spreadsheet sekaligus. Pastikan kenaikan kelas telah resmi disetujui rapat dewan guru.
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Ketik <span className="font-mono font-bold text-indigo-700">NAIK KELAS</span> untuk konfirmasi:
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+                placeholder="Ketik NAIK KELAS..."
+                className="input-field text-xs font-mono font-bold text-center tracking-wider py-2.5"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPromotionModal(false);
+                  setConfirmText('');
+                }}
+                disabled={promoting}
+                className="btn-secondary flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handlePromoteStudents}
+                disabled={promoting || confirmText !== 'NAIK KELAS'}
+                className="btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {promoting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Memproses di Spreadsheet...</span>
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Eksekusi Kenaikan Kelas</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

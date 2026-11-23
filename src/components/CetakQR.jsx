@@ -18,15 +18,15 @@ export default function CetakQR({ user, addToast }) {
 
   const generateCards = async () => {
     setGenerating(true);
-    const targetStudents = ALL_STUDENTS.filter(
-      (s) => s.kelas === selectedClass && s.aktif !== false
-    );
+    const targetStudents = selectedClass === 'SEMUA'
+      ? ALL_STUDENTS.filter((s) => s.aktif !== false)
+      : ALL_STUDENTS.filter((s) => s.kelas === selectedClass && s.aktif !== false);
 
     const generated = await Promise.all(
       targetStudents.map(async (student) => {
         try {
           const qrDataUrl = await QRCode.toDataURL(student.kode, {
-            width: 140,
+            width: 300,
             margin: 1,
             color: {
               dark: '#172B4D',
@@ -46,7 +46,7 @@ export default function CetakQR({ user, addToast }) {
 
     setCards(generated.filter(Boolean));
     setGenerating(false);
-    addToast(`${generated.length} kartu QR siap dicetak untuk ${selectedClass}`, 'success');
+    addToast(`${generated.length} kartu QR siap dicetak untuk ${selectedClass === 'SEMUA' ? 'Semua Siswa' : selectedClass}`, 'success');
   };
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function CetakQR({ user, addToast }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 print-page-wrapper">
       {/* Control Bar (hidden during print) */}
       <div className="card p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -68,6 +68,7 @@ export default function CetakQR({ user, addToast }) {
             onChange={(e) => setSelectedClass(e.target.value)}
             className="input-field text-xs font-bold w-full sm:w-56 cursor-pointer"
           >
+            <option value="SEMUA">Semua Kelas ({ALL_STUDENTS.filter((s) => s.aktif !== false).length} Siswa)</option>
             {classList.map((k) => (
               <option key={k} value={k}>
                 {k}
@@ -96,12 +97,12 @@ export default function CetakQR({ user, addToast }) {
       </div>
 
       {/* Grid of Printable Student Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 justify-items-center cards-print-grid">
         {cards.map((student) => (
           <div
             key={student.kode}
             style={{ width: '85.6mm', height: '54mm' }}
-            className="rounded-[4mm] border border-[#172B4D] bg-white text-[#172B4D] p-[4mm] flex items-center gap-[4mm] shadow-md relative overflow-hidden break-inside-avoid shrink-0 select-none"
+            className="rounded-[4mm] border border-[#172B4D] bg-white text-[#172B4D] p-[4mm] flex items-center gap-[4mm] shadow-md relative overflow-hidden select-none qr-card-item shrink-0"
           >
             {/* School Header Background Accent */}
             <div className="absolute top-0 left-0 right-0 h-[3mm] bg-[#172B4D]" />

@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { LogIn, Wifi, User, Lock } from 'lucide-react';
-import { apiCall, CONFIG } from '../utils/api';
+import { LogIn, Wifi, User, Lock, HeartHandshake, Users, Smartphone, KeyRound, QrCode } from 'lucide-react';
+import { apiCall, CONFIG, LS } from '../utils/api';
+import { ALL_STUDENTS } from '../data/students';
 import { playSuccessBeep, playErrorBuzz, triggerHaptic } from '../utils/audio';
 
 export default function Login({ onLoginSuccess, addToast }) {
+  const [loginMode, setLoginMode] = useState('guru'); // 'guru' | 'ortu'
+
+  // Teacher Form State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  // Parent Form State
+  const [namaSiswa, setNamaSiswa] = useState('');
+  const [kodeSiswa, setKodeSiswa] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [testingConn, setTestingConn] = useState(false);
 
@@ -101,6 +110,65 @@ export default function Login({ onLoginSuccess, addToast }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginOrtu = (e) => {
+    if (e) e.preventDefault();
+    const cleanNama = namaSiswa.trim().toLowerCase();
+    const cleanKode = kodeSiswa.trim().toUpperCase();
+
+    if (!cleanNama || !cleanKode) {
+      addToast('Nama lengkap dan kode kartu siswa wajib diisi', 'error');
+      playErrorBuzz();
+      triggerHaptic(false);
+      return;
+    }
+
+    const matched = ALL_STUDENTS.find(
+      (s) => s.nama.trim().toLowerCase() === cleanNama && s.kode.trim().toUpperCase() === cleanKode
+    );
+
+    if (!matched) {
+      addToast('Identitas siswa atau kode kartu tidak cocok. Pastikan nama sesuai data sekolah.', 'error');
+      playErrorBuzz();
+      triggerHaptic(false);
+      if (formRef.current) {
+        gsap.fromTo(formRef.current, { x: -10 }, { x: 0, duration: 0.5, ease: 'elastic.out(1, 0.25)' });
+      }
+      return;
+    }
+
+    // Check device limit (Max 2 devices per student)
+    const deviceKey = 'sabsensi_devices_' + matched.kode;
+    let registeredDevices = LS.get(deviceKey) || [];
+    let myDeviceId = LS.get('my_device_token');
+    if (!myDeviceId) {
+      myDeviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      LS.set('my_device_token', myDeviceId);
+    }
+
+    if (!registeredDevices.includes(myDeviceId)) {
+      if (registeredDevices.length >= 2) {
+        addToast('Batas maksimal 2 perangkat wali murid untuk ananda ini telah tercapai.', 'error');
+        playErrorBuzz();
+        triggerHaptic(false);
+        return;
+      }
+      registeredDevices.push(myDeviceId);
+      LS.set(deviceKey, registeredDevices);
+    }
+
+    playSuccessBeep();
+    triggerHaptic(true);
+    addToast(`Selamat datang, Wali Murid dari ${matched.nama}!`, 'success');
+
+    onLoginSuccess({
+      username: matched.kode,
+      nama: `Wali Murid (${matched.nama})`,
+      role: 'ortu',
+      siswa: matched,
+      dbUrl: ''
+    }, 'sesi_ortu_' + matched.kode);
   };
 
   const testConnection = async () => {
@@ -207,57 +275,138 @@ export default function Login({ onLoginSuccess, addToast }) {
             </div>
             <div>
               <h1 className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white">
-                Absensi QR
+                S-Absensi QR
               </h1>
               <p className="text-xs text-blue-200/80 font-medium">SMKN 7 Pandeglang</p>
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-300 mb-6">
-            Masuk dengan akun <span className="font-semibold text-white">Guru</span> atau <span className="font-semibold text-white">Admin</span> untuk memulai sesi absensi.
-          </p>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-blue-200 mb-1.5">Username</label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ketik username..."
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-blue-200 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Ketik password..."
-                  autoComplete="current-password"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
-                />
-              </div>
-            </div>
-
+          {/* Role Mode Switcher Tab */}
+          <div className="flex items-center gap-1.5 p-1 bg-black/30 rounded-2xl mb-5 border border-white/10 text-xs font-bold">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 px-4 rounded-xl font-heading font-bold text-sm text-white bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] shadow-lg shadow-blue-900/40 border border-white/20 flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
+              type="button"
+              onClick={() => setLoginMode('guru')}
+              className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                loginMode === 'guru'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white'
+              }`}
             >
-              <LogIn className="w-4 h-4" />
-              <span>{loading ? 'Memeriksa Kredensial...' : 'Masuk Aplikasi'}</span>
+              <User className="w-3.5 h-3.5" />
+              <span>Guru / Staf</span>
             </button>
-          </form>
+            <button
+              type="button"
+              onClick={() => setLoginMode('ortu')}
+              className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                loginMode === 'ortu'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <HeartHandshake className="w-3.5 h-3.5" />
+              <span>Wali Murid</span>
+            </button>
+          </div>
+
+          {loginMode === 'guru' ? (
+            <>
+              <p className="text-xs sm:text-sm text-slate-300 mb-5">
+                Masuk dengan akun <span className="font-semibold text-white">Guru Piket</span> atau <span className="font-semibold text-white">Admin</span> untuk memulai sesi absensi.
+              </p>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-blue-200 mb-1.5">Username</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Ketik username..."
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-blue-200 mb-1.5">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Ketik password..."
+                      autoComplete="current-password"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-2 py-3 px-4 rounded-xl font-heading font-bold text-sm text-white bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] shadow-lg shadow-blue-900/40 border border-white/20 flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>{loading ? 'Memeriksa Kredensial...' : 'Masuk Aplikasi'}</span>
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="text-xs sm:text-sm text-slate-300 mb-5">
+                Pantau kehadiran ananda secara real-time. Maksimal <span className="font-semibold text-white">2 perangkat</span> terdaftar per siswa.
+              </p>
+
+              <form onSubmit={handleLoginOrtu} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-blue-200 mb-1.5">Nama Lengkap Siswa</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={namaSiswa}
+                      onChange={(e) => setNamaSiswa(e.target.value)}
+                      placeholder="Ketik nama lengkap siswa..."
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-blue-200 mb-1.5">
+                    Kode Kartu Pelajar (Password)
+                  </label>
+                  <div className="relative">
+                    <QrCode className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={kodeSiswa}
+                      onChange={(e) => setKodeSiswa(e.target.value.toUpperCase())}
+                      placeholder="8 karakter kode kartu (misal: UDWU-QCZR)"
+                      maxLength={12}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/20 bg-black/20 text-white placeholder-slate-400 text-sm font-mono tracking-wider focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-2 py-3 px-4 rounded-xl font-heading font-bold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] shadow-lg shadow-emerald-900/40 border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <HeartHandshake className="w-4 h-4" />
+                  <span>Masuk Portal Wali Murid</span>
+                </button>
+              </form>
+            </>
+          )}
 
           {/* Test Connection */}
           <div className="mt-6 pt-5 border-t border-white/10 flex flex-col items-center gap-3">

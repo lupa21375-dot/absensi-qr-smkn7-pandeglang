@@ -19,7 +19,8 @@ import {
   Award,
   AlertCircle
 } from 'lucide-react';
-import { apiCall, getDeviceTime } from '../utils/api';
+import { apiCall, getDeviceTime, getTodayScheduleRules } from '../utils/api';
+import StockTrendChart from './StockTrendChart';
 
 export default function Dashboard({ user, onNavigate, addToast }) {
   const [loading, setLoading] = useState(true);
@@ -89,25 +90,31 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   const isSenin = hariLower.includes('senin') || dow === 1;
   const isJumat = hariLower.includes('jumat') || dow === 5;
 
+  // Dynamic schedule rules
+  const todayRules = getTodayScheduleRules();
+  const batasTepatWaktuStr = (todayRules.batasTepatWaktu || '07:15').replace(':', '.') + ' WIB';
+  const [cutH, cutM] = (todayRules.batasTepatWaktu || '07:15').split(':').map(Number);
+  const cutoffMinutes = cutH * 60 + cutM;
+
   // Title and context for ceremonial / morning activity
   let eventTitle = 'Ketepatan Waktu Siswa';
-  let eventSubtitle = 'Persentase kehadiran siswa tepat waktu sebelum batas toleransi 07.18 WIB.';
+  let eventSubtitle = `Persentase kehadiran siswa tepat waktu sebelum batas toleransi ${batasTepatWaktuStr}.`;
   let EventIcon = Award;
 
   if (isSenin) {
     eventTitle = 'Partisipasi Upacara Bendera';
-    eventSubtitle = 'Siswa yang hadir tepat waktu (sebelum 07.18 WIB) dihitung mengikuti upacara.';
+    eventSubtitle = `Siswa yang hadir tepat waktu (sebelum ${batasTepatWaktuStr}) dihitung mengikuti upacara.`;
     EventIcon = Flag;
   } else if (isJumat) {
     eventTitle = "Partisipasi Jum'at Taqwa (Jumtak)";
-    eventSubtitle = 'Siswa yang hadir tepat waktu (sebelum 07.18 WIB) dihitung mengikuti Jumtak.';
+    eventSubtitle = `Siswa yang hadir tepat waktu (sebelum ${batasTepatWaktuStr}) dihitung mengikuti Jumtak.`;
     EventIcon = HeartHandshake;
   }
 
   // Determine if today is an active school day with attendance
   const isHariAktif = data.kondisi === 'AKTIF';
   const devTime = getDeviceTime();
-  const isAfterUpacaraCutoff = devTime.menit >= (7 * 60 + 18); // 07:18 WIB
+  const isAfterUpacaraCutoff = devTime.menit >= cutoffMinutes;
   const isAfterMasukCutoff = devTime.menit >= 13 * 60; // 13:00 WIB
 
   // Participation logic:
@@ -269,7 +276,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
                   {siswaIkut} <span className="text-xs font-medium text-emerald-700">/ {totalSiswa} Siswa</span>
                 </div>
                 <span className="text-[11px] text-emerald-700 mt-1 block">
-                  {!isHariAktif ? 'Sekolah libur / akhir pekan' : 'Scan masuk sebelum 07.18 WIB'}
+                  {!isHariAktif ? 'Sekolah libur / akhir pekan' : `Scan masuk sebelum ${batasTepatWaktuStr}`}
                 </span>
               </div>
 
@@ -300,7 +307,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
               <span>
                 {!isHariAktif
                   ? 'Sistem absensi dan upacara bendera akan mulai aktif pada hari Senin pukul 06.00 WIB.'
-                  : 'Siswa yang datang terlambat (scan lewat 07.18 WIB) otomatis tidak dihitung sebagai peserta upacara/jumtak.'}
+                  : `Siswa yang datang terlambat (scan lewat ${batasTepatWaktuStr}) otomatis tidak dihitung sebagai peserta upacara/jumtak.`}
               </span>
             </div>
           </div>
@@ -354,7 +361,7 @@ export default function Dashboard({ user, onNavigate, addToast }) {
           >
             {data.terlambat || 0}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium mt-1 block">Lewat 07.18 WIB</span>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">Lewat {batasTepatWaktuStr}</span>
         </div>
 
         {/* Izin */}
@@ -400,6 +407,9 @@ export default function Dashboard({ user, onNavigate, addToast }) {
           </span>
         </div>
       </div>
+
+      {/* Stock-Style Monthly Attendance Trend Chart */}
+      <StockTrendChart />
 
       {/* Admin Quick Actions */}
       {user?.role === 'admin' && (

@@ -209,7 +209,7 @@ export default function KelolaAkun({ user, addToast }) {
                   type="text"
                   value={formNama}
                   onChange={(e) => setFormNama(e.target.value)}
-                  placeholder="Contoh: Pak Budi Santoso, S.Pd"
+                  placeholder="Nama lengkap & gelar petugas"
                   className="input-field text-xs"
                   required
                 />

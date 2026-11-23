@@ -227,10 +227,96 @@
 
 /* QR Card Print Layout */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 6mm;
+  }
+
+  /* Reset all scrolling and container clipping */
+  html,
   body {
     background: #ffffff !important;
+    color: #172B4D !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  body::before, .no-print {
+
+  body::before,
+  .no-print,
+  header,
+  nav,
+  aside,
+  footer,
+  button,
+  [role="status"],
+  [class*="Toast"],
+  [class*="toast"] {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  #root,
+  #root > div,
+  #root > div > div,
+  main,
+  .print-page-wrapper {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    background: #ffffff !important;
+  }
+
+  /* Print Grid for Cards - Exactly 2 columns of 85.6mm cards on A4 */
+  .cards-print-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    gap: 4.5mm 6mm !important;
+    width: 100% !important;
+    max-width: 182mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    page-break-inside: auto !important;
+  }
+
+  .qr-card-item {
+    width: 85.6mm !important;
+    height: 54mm !important;
+    min-width: 85.6mm !important;
+    max-width: 85.6mm !important;
+    min-height: 54mm !important;
+    max-height: 54mm !important;
+    box-sizing: border-box !important;
+    border: 1.5px solid #172B4D !important;
+    border-radius: 3.5mm !important;
+    background: #ffffff !important;
+    color: #172B4D !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

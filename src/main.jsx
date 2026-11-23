@@ -7,4 +7,14 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
   </StrictMode>,
-)
+);
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./service-worker.js')
+      .then((reg) => console.log('S-Absensi Service Worker registered:', reg.scope))
+      .catch((err) => console.warn('Service Worker registration failed:', err));
+  });
+}

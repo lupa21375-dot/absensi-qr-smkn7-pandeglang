@@ -11,7 +11,8 @@ import {
   XCircle,
   QrCode
 } from 'lucide-react';
-import { apiCall } from '../utils/api';
+import { apiCall, triggerParentNotification } from '../utils/api';
+import { ALL_STUDENTS } from '../data/students';
 import { playSuccessBeep, playErrorBuzz, triggerHaptic } from '../utils/audio';
 
 const MODES = [
@@ -193,6 +194,14 @@ export default function Scanner({ user, addToast }) {
 
       playSuccessBeep();
       triggerHaptic(true);
+
+      // Trigger instant parent notification
+      const studentObj = res.siswa || ALL_STUDENTS.find((s) => s.kode === code) || { kode: code, nama: res.nama, kelas: res.kelas };
+      triggerParentNotification(studentObj, mode, res.jam, {
+        terlambat: res.terlambat || 0,
+        keterangan: keterangan.trim()
+      });
+
       setScanResult({
         success: true,
         data: res,
@@ -387,7 +396,7 @@ export default function Scanner({ user, addToast }) {
               <h3 className="font-heading font-extrabold text-base text-[#172B4D]">Input Kode Manual</h3>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Masukkan 8 karakter kode QR siswa jika kartu buram atau kamera tidak terbaca (contoh: UDWU-QCZR).
+              Masukkan 8 karakter kode QR siswa jika kartu buram atau kamera tidak terbaca (format: UDWU-QCZR).
             </p>
             <form onSubmit={handleManualSubmit} className="space-y-3">
               <input

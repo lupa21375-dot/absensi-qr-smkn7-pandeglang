@@ -99,7 +99,7 @@ export default function HariLibur({ user, addToast }) {
               type="text"
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
-              placeholder="Contoh: Libur Hari Guru, Semesteran, dsb."
+              placeholder="Keterangan hari libur (Hari Guru, Libur Semester, dll)"
               className="input-field text-xs"
             />
           </div>

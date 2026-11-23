@@ -4,7 +4,7 @@ import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 export default function ToastContainer({ toasts, removeToast }) {
   return (
-    <div className="fixed top-4 left-0 right-0 z-[9999] flex flex-col items-center gap-2 pointer-events-none px-4">
+    <div className="fixed top-4 left-0 right-0 z-[9999] flex flex-col items-center gap-2 pointer-events-none px-4 no-print">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
       ))}
