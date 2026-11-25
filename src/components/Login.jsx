@@ -226,7 +226,7 @@ export default function Login({ onLoginSuccess, addToast }) {
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-1 border border-blue-200 shadow-sm shrink-0">
-                <img src="./logo.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
+                <img src="./logo-sekolah.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
               </div>
               <div>
                 <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Kartu Pelajar</span>

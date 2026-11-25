@@ -43,7 +43,7 @@ export default function Header({ currentTab, user, onToggleTheme, theme }) {
       <div className="flex items-center gap-3">
         {/* Official School Logo */}
         <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white p-1.5 border border-slate-200/80 shadow-sm shrink-0 flex items-center justify-center">
-          <img src="./logo.png" alt="Logo SMKN 7 Pandeglang" className="w-full h-full object-contain" />
+          <img src="./logo-sekolah.png" alt="Logo SMKN 7 Pandeglang" className="w-full h-full object-contain" />
         </div>
         <div>
           <div className="flex items-center gap-2">

@@ -118,7 +118,7 @@ export default function CetakQR({ user, addToast }) {
             <div className="flex-1 min-w-0 flex flex-col justify-between h-[36mm]">
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
-                  <img src="./logo.png" alt="Logo" className="w-4 h-4 object-contain" />
+                  <img src="./logo-sekolah.png" alt="Logo" className="w-4 h-4 object-contain" />
                   <span className="text-[8px] font-bold tracking-tight text-slate-500 uppercase">
                     SMKN 7 Pandeglang
                   </span>

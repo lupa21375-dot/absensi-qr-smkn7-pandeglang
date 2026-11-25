@@ -39,7 +39,7 @@ export default function Sidebar({ currentTab, onSelectTab, user, onLogout }) {
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-2 py-3 mb-2 border-b border-slate-200/50">
         <div className="w-10 h-10 rounded-2xl bg-white p-1.5 border border-slate-200/80 shadow-sm shrink-0 flex items-center justify-center">
-          <img src="./logo.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
+          <img src="./logo-sekolah.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0">
           <h2 className="font-heading font-extrabold text-base text-[#172B4D] leading-tight truncate">
