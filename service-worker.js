@@ -1,9 +1,11 @@
 // S-Absensi QR — SMKN 7 Pandeglang Service Worker
-const CACHE_NAME = 'sabsensi-cache-v2';
+const CACHE_NAME = 'sabsensi-cache-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './logo.png',
+  './logo-sekolah.png',
+  './logo-aplikasi.png',
   './app-icon-512.png',
   './app-icon-192.png',
   './sounds/notify.wav',
