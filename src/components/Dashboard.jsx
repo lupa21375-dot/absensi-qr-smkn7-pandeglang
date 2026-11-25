@@ -17,7 +17,8 @@ import {
   Flag,
   HeartHandshake,
   Award,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { apiCall, getDeviceTime, getTodayScheduleRules } from '../utils/api';
 import StockTrendChart from './StockTrendChart';
@@ -42,17 +43,28 @@ export default function Dashboard({ user, onNavigate, addToast }) {
   const hadirCountRef = useRef(null);
   const circleRef = useRef(null);
 
-  const loadDashboard = async () => {
+  const loadDashboard = async (isManual = false) => {
     try {
       setLoading(true);
       const devTime = getDeviceTime();
-      // Jika sudah malam setelah jam 19:30 (Habis Isya), dashboard menampilkan status siap untuk esok hari (semua 0)
+      // Reset state lokal sebelum fetch baru jika ditekan Segarkan Data
+      if (isManual) {
+        setData((prev) => ({
+          ...prev,
+          riwayat: []
+        }));
+      }
+
+      // Jam malam setelah 19:30 WIB (Habis Isya): sistem otomatis bersih untuk persiapan esok hari
       const isNightReset = devTime.jam >= 19 && devTime.menit >= 30;
 
-      const res = await apiCall('getDashboard', { limitRiwayat: 30, tanggal: devTime.tgl, _t: Date.now() }, user?.sesi);
+      const res = await apiCall(
+        'getDashboard',
+        { limitRiwayat: 30, tanggal: devTime.tgl, _cacheBuster: Date.now() },
+        user?.sesi
+      );
       
       if (isNightReset) {
-        // Tampilkan keadaan segar (semua 0) menjelang hari esok
         setData({
           ...res,
           keterangan: 'Sesi hari ini selesai. Sistem siap untuk aktivitas esok hari.',
@@ -65,6 +77,10 @@ export default function Dashboard({ user, onNavigate, addToast }) {
         });
       } else {
         setData(res);
+      }
+
+      if (isManual && addToast) {
+        addToast('Data Dashboard berhasil disegarkan!', 'success');
       }
 
       if (bentoRef.current) {
@@ -90,6 +106,9 @@ export default function Dashboard({ user, onNavigate, addToast }) {
         alfa: 0,
         riwayat: []
       }));
+      if (isManual && addToast) {
+        addToast('Gagal terhubung ke spreadsheet, menampilkan data offline', 'warning');
+      }
     } finally {
       setLoading(false);
     }
@@ -188,24 +207,34 @@ export default function Dashboard({ user, onNavigate, addToast }) {
           </p>
         </div>
 
-        {user?.role === 'admin' && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => onNavigate('scan')}
-              className="btn-primary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Buka Scanner</span>
-            </button>
-            <button
-              onClick={() => onNavigate('rekap')}
-              className="btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-blue-700" />
-              <span>Lihat Rekap</span>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => loadDashboard(true)}
+            disabled={loading}
+            className="btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm hover:bg-white"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#315E9E] ${loading ? 'animate-spin' : ''}`} />
+            <span>Segarkan Data</span>
+          </button>
+          {user?.role === 'admin' && (
+            <>
+              <button
+                onClick={() => onNavigate('scan')}
+                className="btn-primary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Buka Scanner</span>
+              </button>
+              <button
+                onClick={() => onNavigate('rekap')}
+                className="btn-secondary py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-4 h-4 text-blue-700" />
+                <span>Lihat Rekap</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Holiday / Inactive Notice */}

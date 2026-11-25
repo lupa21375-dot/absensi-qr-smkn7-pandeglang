@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import BottomBar from './components/BottomBar';
@@ -20,6 +21,7 @@ import ToastContainer from './components/Toast';
 import { LS } from './utils/api';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState(() => LS.get('absen_user') || null);
   const [session, setSession] = useState(() => LS.get('absen_session') || null);
   const [currentTab, setCurrentTab] = useState('dash');
@@ -80,6 +82,11 @@ export default function App() {
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
+
+  // Splash Screen Intro 3D
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   // If user is not authenticated, render Login view
   if (!user || !session) {

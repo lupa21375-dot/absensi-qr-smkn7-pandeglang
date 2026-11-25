@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Shield, Moon, Sun, CircleDot, Smartphone } from 'lucide-react';
+import { Clock, Shield, Moon, Sun, CircleDot } from 'lucide-react';
 import { getDeviceTime, isGateOpen } from '../utils/api';
 import { NAV_ITEMS } from './Sidebar';
 
@@ -79,17 +79,6 @@ export default function Header({ currentTab, user, onToggleTheme, theme }) {
           <span>{currentTime.tgl}</span>
           <span className="font-bold text-[#172B4D]">{currentTime.jamDisplay}</span>
         </div>
-
-        {/* PWA Install Button */}
-        {installPrompt && (
-          <button
-            onClick={handleInstallClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md cursor-pointer animate-pulse"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Install Aplikasi</span>
-          </button>
-        )}
 
         {/* User Chip */}
         <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full glass border border-white/60 text-xs font-bold text-[#172B4D] shadow-sm">

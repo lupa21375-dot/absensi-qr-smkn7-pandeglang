@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   Bell,
@@ -14,9 +14,10 @@ import {
   Calendar,
   HeartHandshake,
   Award,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
-import { getDeviceTime, LS } from '../utils/api';
+import { getDeviceTime, LS, apiCall } from '../utils/api';
 
 export default function PortalOrtu({ user, onLogout, addToast }) {
   const siswa = user?.siswa;
@@ -26,6 +27,17 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
   const [digitalQrUrl, setDigitalQrUrl] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [activeTab, setActiveTab] = useState('status'); // 'status' | 'kartu' | 'riwayat'
+  const [liveStatus, setLiveStatus] = useState(null);
+  const [loadingLive, setLoadingLive] = useState(false);
+  const lastStatusRef = useRef(null);
+
+  // Play clean chime sound
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('./sounds/notify.wav');
+      audio.play().catch(() => {});
+    } catch {}
+  };
 
   // Generate child's digital QR card
   useEffect(() => {
@@ -38,12 +50,97 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
     }
   }, [siswa?.kode]);
 
-  // Load notifications for this child
-  useEffect(() => {
+  // Load notification history
+  const loadLocalNotifications = () => {
     const allNotifs = LS.get('sabsensi_notif_log') || [];
     const childNotifs = allNotifs.filter((n) => n.studentKode === siswa?.kode);
     setNotifications(childNotifs);
+  };
+
+  useEffect(() => {
+    loadLocalNotifications();
   }, [siswa?.kode]);
+
+  // Realtime Polling Status dari Backend Google Spreadsheet
+  const fetchLiveStatus = async (isManual = false) => {
+    if (!siswa?.kode) return;
+    if (isManual) setLoadingLive(true);
+    try {
+      const res = await apiCall('getStatusOrtu', { kode: siswa.kode, _t: Date.now() });
+      if (res && res.status === 'success') {
+        setLiveStatus(res);
+
+        // Jika status baru berubah (misal dari BELUM_SCAN jadi MASUK / PULANG), bunyikan notifikasi & pop-up
+        if (lastStatusRef.current && lastStatusRef.current !== res.statusPresensi && res.statusPresensi !== 'BELUM_SCAN') {
+          playNotificationSound();
+          const title = 'S-Absensi QR — SMKN 7 Pandeglang';
+          let body = '';
+          if (res.statusPresensi === 'MASUK') {
+            body = `🟢 Ananda ${siswa.nama} telah tiba di sekolah pukul ${res.jamMasuk} WIB.`;
+          } else if (res.statusPresensi === 'PULANG') {
+            body = `🟢 Ananda ${siswa.nama} telah scan pulang sekolah pukul ${res.jamPulang} WIB.`;
+          } else if (res.statusPresensi === 'IZIN') {
+            body = `🔵 Izin Ananda ${siswa.nama} telah tercatat: "${res.keteranganIzin}".`;
+          }
+
+          if (body) {
+            triggerNativeNotification(title, body);
+            const currentLogs = LS.get('sabsensi_notif_log') || [];
+            LS.set('sabsensi_notif_log', [
+              {
+                studentKode: siswa.kode,
+                nama: siswa.nama,
+                kelas: siswa.kelas,
+                mode: res.statusPresensi,
+                title,
+                body,
+                timestamp: Date.now()
+              },
+              ...currentLogs.slice(0, 99)
+            ]);
+            loadLocalNotifications();
+          }
+        }
+        lastStatusRef.current = res.statusPresensi;
+      }
+    } catch (err) {
+      console.warn('Live status check:', err);
+    } finally {
+      if (isManual) setLoadingLive(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveStatus();
+    // Poll status setiap 20 detik saat halaman dibuka
+    const timer = setInterval(() => {
+      fetchLiveStatus();
+    }, 20000);
+    return () => clearInterval(timer);
+  }, [siswa?.kode]);
+
+  const triggerNativeNotification = (title, body) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      const options = {
+        body,
+        icon: './logo.png',
+        badge: './logo.png',
+        vibrate: [200, 100, 200],
+        tag: `notif_${Date.now()}`
+      };
+      try {
+        new Notification(title, options);
+      } catch {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title,
+            ...options
+          });
+        }
+      }
+    }
+  };
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
@@ -56,44 +153,23 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
       if (permission === 'granted') {
         setNotifEnabled(true);
         addToast('Notifikasi berhasil diaktifkan di ponsel ini!', 'success');
-
-        // Trigger welcome test notification
         showTestNotification();
       } else {
         setNotifEnabled(false);
         addToast('Izin notifikasi ditolak. Aktifkan lewat pengaturan browser.', 'error');
       }
-    } catch (err) {
+    } catch {
       addToast('Gagal meminta izin notifikasi', 'error');
     }
   };
 
   const showTestNotification = () => {
+    playNotificationSound();
     const title = 'S-Absensi QR — SMKN 7 Pandeglang';
-    const options = {
-      body: `🟢 Notifikasi aktif! Anda akan menerima pemberitahuan otomatis setiap kali ${siswa?.nama || 'Ananda'} melakukan scan absensi di sekolah.`,
-      icon: './logo.png',
-      badge: './logo.png',
-      vibrate: [200, 100, 200]
-    };
-
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification(title, options);
-      } catch {
-        // Fallback for service worker notification
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            title,
-            ...options
-          });
-        }
-      }
-    }
+    const body = `🟢 Notifikasi aktif! Anda akan menerima pemberitahuan otomatis setiap kali ${siswa?.nama || 'Ananda'} melakukan scan absensi di sekolah.`;
+    triggerNativeNotification(title, body);
   };
 
-  // Live status mock or retrieved from local logs
   const latestNotif = notifications[0];
   const currentTime = getDeviceTime();
 
@@ -103,14 +179,14 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
       <div className="card p-5 sm:p-6 flex items-center justify-between border-blue-200/60 shadow-lg">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-white p-1.5 border border-slate-200 shadow-sm shrink-0 flex items-center justify-center">
-            <img src="./logo.png" alt="Logo SMKN 7" className="w-full h-full object-contain" />
+            <img src="./logo.png" alt="Logo S-Absensi" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded-full bg-blue-100 text-[#315E9E]">
                 Portal Wali Murid
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">HP 1/2 Terdaftar</span>
+              <span className="text-[10px] text-slate-400 font-medium">Akun Resmi</span>
             </div>
             <h2 className="font-heading font-extrabold text-lg sm:text-xl text-[#172B4D] mt-0.5 leading-tight">
               {siswa?.nama || 'Siswa SMKN 7'}
@@ -205,16 +281,43 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
       {activeTab === 'status' && (
         <div className="space-y-4">
           <div className="card p-6 space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-              Status Presensi Hari Ini ({currentTime.tgl})
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                Status Presensi Hari Ini ({currentTime.tgl})
+              </span>
+              <button
+                onClick={() => fetchLiveStatus(true)}
+                disabled={loadingLive}
+                className="text-xs font-semibold text-[#315E9E] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingLive ? 'animate-spin' : ''}`} />
+                <span>Segarkan</span>
+              </button>
+            </div>
 
-            {latestNotif ? (
+            {liveStatus?.statusPresensi && liveStatus.statusPresensi !== 'BELUM_SCAN' ? (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   <span className="font-heading font-extrabold text-base text-emerald-900">
-                    Aktivitas Terakhir: {latestNotif.mode}
+                    Aktivitas: {liveStatus.statusPresensi === 'MASUK' ? 'Telah Hadir di Sekolah' : liveStatus.statusPresensi === 'PULANG' ? 'Telah Pulang Sekolah' : 'Izin Tercatat'}
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                  {liveStatus.statusPresensi === 'MASUK' && `Ananda telah tiba di sekolah pada pukul ${liveStatus.jamMasuk} WIB.`}
+                  {liveStatus.statusPresensi === 'PULANG' && `Ananda telah scan pulang pada pukul ${liveStatus.jamPulang} WIB.`}
+                  {liveStatus.statusPresensi === 'IZIN' && `Keterangan izin: "${liveStatus.keteranganIzin}" (Pukul ${liveStatus.jamIzin} WIB).`}
+                </p>
+                <span className="text-[10px] text-emerald-600 font-mono block">
+                  Status Terverifikasi Sistem SMKN 7 Pandeglang
+                </span>
+              </div>
+            ) : latestNotif ? (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span className="font-heading font-extrabold text-base text-emerald-900">
+                    Aktivitas: {latestNotif.mode}
                   </span>
                 </div>
                 <p className="text-xs text-emerald-800 leading-relaxed font-medium">
@@ -228,29 +331,35 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
               <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-2 text-center py-6">
                 <Clock className="w-8 h-8 text-[#315E9E] mx-auto opacity-75" />
                 <h4 className="font-heading font-bold text-sm text-[#172B4D]">
-                  Belum Ada Riwayat Scan Hari Ini
+                  Belum Ada Aktivitas Scan Hari Ini
                 </h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Begitu ananda tiba di sekolah dan kartu discan oleh petugas piket, status akan otomatis terupdate secara langsung di sini.
+                  Begitu ananda tiba di sekolah dan kartu discan oleh petugas piket, status akan langsung muncul otomatis di layar HP Anda.
                 </p>
               </div>
             )}
 
-            {/* Monthly Attendance Summary Pill */}
+            {/* Monthly Attendance Summary Pill - DATA RIIL */}
             <div className="grid grid-cols-3 gap-2.5 pt-2">
               <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-center">
                 <span className="text-[10px] font-bold text-emerald-800 uppercase block">Hadir Tepat Waktu</span>
-                <span className="font-heading font-extrabold text-xl text-emerald-900 block my-0.5">21</span>
+                <span className="font-heading font-extrabold text-xl text-emerald-900 block my-0.5">
+                  {liveStatus?.ringkasanBulanIni?.hadir || 0}
+                </span>
                 <span className="text-[10px] text-emerald-600 block">Hari</span>
               </div>
               <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-center">
                 <span className="text-[10px] font-bold text-amber-800 uppercase block">Terlambat</span>
-                <span className="font-heading font-extrabold text-xl text-amber-900 block my-0.5">1</span>
+                <span className="font-heading font-extrabold text-xl text-amber-900 block my-0.5">
+                  {liveStatus?.ringkasanBulanIni?.terlambat || 0}
+                </span>
                 <span className="text-[10px] text-amber-600 block">Kali</span>
               </div>
               <div className="p-3 rounded-2xl bg-blue-50/80 border border-blue-200 text-center">
                 <span className="text-[10px] font-bold text-blue-800 uppercase block">Izin Tercatat</span>
-                <span className="font-heading font-extrabold text-xl text-blue-900 block my-0.5">0</span>
+                <span className="font-heading font-extrabold text-xl text-blue-900 block my-0.5">
+                  {liveStatus?.ringkasanBulanIni?.izin || 0}
+                </span>
                 <span className="text-[10px] text-blue-600 block">Hari</span>
               </div>
             </div>
@@ -258,7 +367,7 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
         </div>
       )}
 
-      {/* Tab 2: Digital QR Card (Emergency backup if card is lost/forgotten) */}
+      {/* Tab 2: Digital QR Card */}
       {activeTab === 'kartu' && (
         <div className="card p-6 flex flex-col items-center text-center space-y-4">
           <div>
@@ -270,7 +379,6 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
             </p>
           </div>
 
-          {/* Physical style ID card preview */}
           <div
             style={{ width: '85.6mm', height: '54mm' }}
             className="rounded-[4mm] border border-[#172B4D] bg-white text-[#172B4D] p-[4mm] flex items-center gap-[4mm] shadow-xl relative overflow-hidden select-none text-left shrink-0"
@@ -321,36 +429,38 @@ export default function PortalOrtu({ user, onLogout, addToast }) {
 
       {/* Tab 3: Notification History */}
       {activeTab === 'riwayat' && (
-        <div className="card p-6 space-y-3">
-          <h3 className="font-heading font-extrabold text-base text-[#172B4D]">
-            Riwayat Notifikasi Kehadiran
-          </h3>
-          <p className="text-xs text-slate-500">
-            Daftar seluruh notifikasi yang terkirim ke ponsel ini saat siswa melakukan scan.
-          </p>
+        <div className="card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="font-heading font-extrabold text-base text-[#172B4D]">
+              Riwayat Notifikasi Masuk
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              {notifications.length} Catatan
+            </span>
+          </div>
 
-          {notifications.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 text-xs">
-              Belum ada riwayat notifikasi tersimpan di perangkat ini.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {notifications.map((n, idx) => (
-                <div key={idx} className="py-3 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-[#315E9E] flex items-center justify-center shrink-0 mt-0.5">
-                    <Bell className="w-4 h-4" />
+          {notifications.length > 0 ? (
+            <div className="divide-y divide-slate-100 space-y-2">
+              {notifications.map((item, index) => (
+                <div key={index} className="pt-2 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-[#172B4D] flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#315E9E]" />
+                      Presensi {item.mode}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {new Date(item.timestamp).toLocaleString('id-ID')}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-heading font-bold text-xs text-[#172B4D]">{n.title}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {new Date(n.timestamp).toLocaleDateString('id-ID')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{n.body}</p>
-                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {item.body}
+                  </p>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-slate-400 text-xs font-medium">
+              Belum ada riwayat notifikasi tersimpan di ponsel ini.
             </div>
           )}
         </div>

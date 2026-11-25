@@ -7,13 +7,18 @@ export default function Riwayat({ user, addToast }) {
   const [riwayat, setRiwayat] = useState([]);
   const [search, setSearch] = useState('');
 
-  const loadRiwayat = async () => {
+  const loadRiwayat = async (isManual = false) => {
     setLoading(true);
+    if (isManual) {
+      setRiwayat([]); // Kosongkan tampilan lama langsung
+    }
     try {
-      // Selalu bypass cache dengan menambahkan timestamp/fresh parameter
-      const res = await apiCall('getDashboard', { limitRiwayat: 200, _t: Date.now() }, user?.sesi);
+      // Selalu bypass cache browser dengan parameter acak unik
+      const res = await apiCall('getDashboard', { limitRiwayat: 200, _cb: Date.now() + Math.random() }, user?.sesi);
       setRiwayat(res.riwayat || []);
-      addToast('Data riwayat berhasil diperbarui', 'success');
+      if (isManual) {
+        addToast('Data riwayat berhasil disegarkan langsung dari server', 'success');
+      }
     } catch (err) {
       addToast(err.message || 'Gagal memuat riwayat', 'error');
     } finally {
@@ -22,7 +27,7 @@ export default function Riwayat({ user, addToast }) {
   };
 
   useEffect(() => {
-    loadRiwayat();
+    loadRiwayat(false);
   }, []);
 
   const getStatusBadge = (status) => {
@@ -57,7 +62,7 @@ export default function Riwayat({ user, addToast }) {
         </div>
 
         <button
-          onClick={loadRiwayat}
+          onClick={() => loadRiwayat(true)}
           disabled={loading}
           className="btn-secondary w-full sm:w-auto py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
         >
